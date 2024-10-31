@@ -6,4 +6,4 @@ just convex env set AUTH_E2E_TEST_SECRET foobarbaz
 just convex env set IS_TEST true
 just convex deploy
 just convex run tests:init
-playwright test
+npx playwright test

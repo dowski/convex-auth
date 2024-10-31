@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { SignInAction } from "../../server/implementation/index.js";
 import { getRequestCookies, getRequestCookiesInMiddleware } from "./cookies.js";
 import { isCorsRequest, logVerbose, setAuthCookies } from "./utils.js";
+import * as jose from "jose";
 
 export async function handleAuthenticationInRequest(
   request: NextRequest,
@@ -94,7 +95,7 @@ async function getRefreshedTokens(verbose: boolean) {
     );
     return null;
   }
-  const decodedToken = decodeToken(token);
+  const decodedToken = await verifyToken(token);
   if (decodedToken === null) {
     logVerbose(`Failed to decode token, returning null`, verbose);
     return null;
@@ -135,10 +136,19 @@ async function getRefreshedTokens(verbose: boolean) {
   }
 }
 
-function decodeToken(token: string) {
+async function verifyToken(token: string) {
   try {
-    return jwtDecode(token);
+    const jwk = JSON.parse(process.env.JWKS!).keys[0];
+    const alg = "RS256";
+    const publicKey = await jose.importJWK(jwk, alg);
+
+    const { payload } = await jose.jwtVerify(token, publicKey, {
+      issuer: process.env.JWT_ISSUER!,
+      audience: process.env.JWT_AUDIENCE!,
+    });
+    return payload;
   } catch (e) {
+    console.log(e);
     return null;
   }
 }
